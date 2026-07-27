@@ -545,12 +545,38 @@ const options = {
         post: {
           tags: ['Authentication'],
           summary: 'Forgot Password',
-          description: 'Send a password reset link to the user\'s email.',
+          description: 'Send a 6-digit OTP to the user\'s email for password reset.',
           requestBody: {
             content: { 'application/json': { schema: { type: 'object', properties: { email: { type: 'string', format: 'email' } }, required: ['email'] } } },
           },
           responses: {
-            200: { description: 'Reset link sent', content: { 'application/json': { schema: { type: 'object', properties: { success: { type: 'boolean' }, message: { type: 'string' } } } } } },
+            200: { description: 'OTP sent to email', content: { 'application/json': { schema: { type: 'object', properties: { success: { type: 'boolean' }, message: { type: 'string' } } } } } },
+          },
+        },
+      },
+      '/auth/reset-password': {
+        post: {
+          tags: ['Authentication'],
+          summary: 'Reset Password',
+          description: 'Verify OTP and set a new password.',
+          requestBody: {
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['email', 'otp', 'newPassword'],
+                  properties: {
+                    email: { type: 'string', format: 'email', example: 'admin@rockscompany.com' },
+                    otp: { type: 'string', example: '123456' },
+                    newPassword: { type: 'string', example: 'newSecurePassword123' },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            200: { description: 'Password reset successfully' },
+            400: { description: 'Invalid or expired OTP', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
           },
         },
       },

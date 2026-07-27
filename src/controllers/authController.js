@@ -159,7 +159,7 @@ exports.login = async (req, res, next) => {
 
 /**
  * POST /auth/forgot-password
- * Send a password reset link to the user's email.
+ * Send a 6-digit OTP to the user's email for password reset.
  */
 exports.forgotPassword = async (req, res, next) => {
   try {
@@ -172,16 +172,67 @@ exports.forgotPassword = async (req, res, next) => {
       // Don't reveal whether the email exists
       return res.json({
         success: true,
-        message: 'Password reset link sent to your email',
+        message: 'Password reset code sent to your email',
       });
     }
 
-    // In a real app: generate reset token, send email, etc.
-    // For now we just return success
+    // Generate a random 6-digit OTP
+    const otp = crypto.randomInt(100_000, 999_999).toString();
+
+    // Store OTP with 5-minute expiry
+    setOtp(email, otp, 5 * 60 * 1000);
+
+    // Send OTP email
+    const sent = await sendOtpEmail(email, otp);
 
     res.json({
       success: true,
-      message: 'Password reset link sent to your email',
+      message: 'Password reset code sent to your email',
+      data: config.isDev ? { otp } : undefined,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * POST /auth/reset-password
+ * Verify OTP and set a new password.
+ */
+exports.resetPassword = async (req, res, next) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+
+    if (!email) throw new AppError('Email is required', 400);
+    if (!otp) throw new AppError('OTP is required', 400);
+    if (!newPassword || newPassword.length < 6) {
+      throw new AppError('New password must be at least 6 characters', 400);
+    }
+
+    // Verify OTP
+    const stored = getOtp(email);
+    if (!stored) {
+      throw new AppError('OTP has expired or was not requested. Please request a new one.', 400);
+    }
+    if (stored.otp !== otp) {
+      throw new AppError('Invalid OTP code', 400);
+    }
+
+    // Find admin and update password
+    const admin = await Admin.findOne({ where: { email } });
+    if (!admin) {
+      throw new AppError('Account not found', 404);
+    }
+
+    admin.password = await bcrypt.hash(newPassword, 12);
+    await admin.save();
+
+    // Delete OTP so it can't be reused
+    deleteOtp(email);
+
+    res.json({
+      success: true,
+      message: 'Password reset successfully. You can now log in with your new password.',
     });
   } catch (error) {
     next(error);
