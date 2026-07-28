@@ -141,6 +141,7 @@ exports.salarySummary = async (req, res, next) => {
  */
 exports.hiringTrend = async (req, res, next) => {
   try {
+    const companyId = req.user.companyId;
     const months = parseInt(req.query.months, 10) || 12;
 
     const labels = [];
@@ -157,6 +158,7 @@ exports.hiringTrend = async (req, res, next) => {
 
       const count = await Employee.count({
         where: {
+          companyId,
           hireDate: {
             [Op.between]: [
               startOfMonth.toISOString().split('T')[0],

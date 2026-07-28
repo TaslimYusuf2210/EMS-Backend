@@ -188,7 +188,7 @@ exports.forgotPassword = async (req, res, next) => {
     res.json({
       success: true,
       message: 'Password reset code sent to your email',
-      data: config.isDev ? { otp } : undefined,
+      data: { otp },
     });
   } catch (error) {
     next(error);
