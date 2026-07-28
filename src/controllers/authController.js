@@ -167,8 +167,9 @@ exports.forgotPassword = async (req, res, next) => {
 
     if (!email) throw new AppError('Email is required', 400);
 
-    const admin = await Admin.findOne({ where: { email } });
-    if (!admin) {
+    // Email is stored on the Company model, not the Admin model
+    const company = await Company.findOne({ where: { email } });
+    if (!company) {
       // Don't reveal whether the email exists
       return res.json({
         success: true,
@@ -218,8 +219,13 @@ exports.resetPassword = async (req, res, next) => {
       throw new AppError('Invalid OTP code', 400);
     }
 
-    // Find admin and update password
-    const admin = await Admin.findOne({ where: { email } });
+    // Email is stored on the Company model, find admin through it
+    const company = await Company.findOne({ where: { email } });
+    if (!company) {
+      throw new AppError('Account not found', 404);
+    }
+
+    const admin = await Admin.findByPk(company.adminId);
     if (!admin) {
       throw new AppError('Account not found', 404);
     }
